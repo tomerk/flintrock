@@ -271,6 +271,7 @@ class Spark(FlintrockService):
                         git clone {repo} spark
                         cd spark
                         git reset --hard {commit}
+                        ./build/mvn -Pyarn -Phadoop-2.7 -Dhadoop.version=2.7.0 -DskipTests package install
                         if [ -e "make-distribution.sh" ]; then
                             ./make-distribution.sh -Phadoop-{hadoop_short_version}
                         else

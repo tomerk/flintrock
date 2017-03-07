@@ -456,8 +456,8 @@ def generate_template_mapping(
 
         'hadoop_version': hadoop_version,
         'hadoop_short_version': '.'.join(hadoop_version.split('.')[:2]),
-        'spark_version': spark_version,
-        'spark_short_version': '.'.join(spark_version.split('.')[:2]),
+        'spark_version': '2.1.0',
+        'spark_short_version': '.'.join('2.1.0'.split('.')[:2]),
 
         'hadoop_root_dir': hadoop_root_dir,
         'hadoop_ephemeral_dirs': hadoop_ephemeral_dirs,
