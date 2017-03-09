@@ -410,6 +410,28 @@ class FlintrockCluster:
 
         run_against_hosts(partial_func=partial_func, hosts=hosts)
 
+    def download_file(
+            self,
+            *,
+            user: str,
+            identity_file: str,
+            remote_path: str,
+            local_path: str):
+        """
+        Download a file from master.
+        """
+        target_hosts = [self.master_ip]
+
+        partial_func = functools.partial(
+            download_file_node,
+            user=user,
+            identity_file=identity_file,
+            remote_path=remote_path,
+            local_path=local_path)
+        hosts = target_hosts
+
+        run_against_hosts(partial_func=partial_func, hosts=hosts)
+
     def login(
             self,
             *,
@@ -855,6 +877,44 @@ def copy_file_node(
             sftp.put(localpath=local_path, remotepath=remote_path)
 
             print("[{h}] Copy complete.".format(h=host))
+
+def download_file_node(
+        *,
+        user: str,
+        host: str,
+        identity_file: str,
+        remote_path: str,
+        local_path: str):
+    """
+    Download a file from a node to the specified local path.
+
+    This method is role-agnostic; it can run on both the cluster master and slaves.
+    This method is meant to be called asynchronously.
+    """
+    ssh_client = get_ssh_client(
+        user=user,
+        host=host,
+        identity_file=identity_file)
+
+    with ssh_client:
+        remote_dir = posixpath.dirname(remote_path)
+
+        try:
+            ssh_check_output(
+                client=ssh_client,
+                command="""
+                    test -d {path}
+                """.format(path=shlex.quote(remote_dir)))
+        except Exception as e:
+            # TODO: Catch more specific exception.
+            raise Exception("Remote directory does not exist: {d}".format(d=remote_dir))
+
+        with ssh_client.open_sftp() as sftp:
+            print("[{h}] Downloading file...".format(h=host))
+
+            sftp.get(localpath=local_path, remotepath=remote_path)
+
+            print("[{h}] Download complete.".format(h=host))
 
 
 # This is necessary down here since we have a circular import dependency between

@@ -818,6 +818,69 @@ def run_command(
         user=user,
         identity_file=identity_file)
 
+@cli.command(name='download-file')
+@click.argument('cluster-name')
+@click.argument('remote_path', type=click.Path())
+@click.argument('local_path', type=click.Path())
+@click.option('--ec2-region', default='us-east-1', show_default=True)
+@click.option('--ec2-vpc-id', default='', help="Leave empty for default VPC.")
+@click.option('--ec2-identity-file',
+              type=click.Path(exists=True, dir_okay=False),
+              help="Path to SSH .pem file for accessing nodes.")
+@click.option('--ec2-user')
+@click.pass_context
+def download_file(
+        cli_context,
+        cluster_name,
+        local_path,
+        remote_path,
+        ec2_region,
+        ec2_vpc_id,
+        ec2_identity_file,
+        ec2_user):
+    """
+    Download a remote file from the master node of a cluster.
+
+    Examples:
+
+        flintrock download-file my-cluster /tmp/file.102.txt /tmp/file.txt
+        flintrock download-file my-cluster /tmp/spark-defaults.conf /tmp/
+
+    Flintrock will return a non-zero code if the master raises an error.
+    """
+    provider = cli_context.obj['provider']
+
+    option_requires(
+        option='--provider',
+        conditional_value='ec2',
+        requires_all=[
+            '--ec2-region',
+            '--ec2-identity-file',
+            '--ec2-user'],
+        scope=locals())
+
+    # We assume POSIX for the remote path since Flintrock
+    # only supports clusters running CentOS / Amazon Linux.
+    if not posixpath.basename(remote_path):
+        remote_path = posixpath.join(remote_path, os.path.basename(local_path))
+
+    if provider == 'ec2':
+        cluster = ec2.get_cluster(
+            cluster_name=cluster_name,
+            region=ec2_region,
+            vpc_id=ec2_vpc_id)
+        user = ec2_user
+        identity_file = ec2_identity_file
+    else:
+        raise UnsupportedProviderError(provider)
+
+    cluster.copy_file_check()
+
+    cluster.download_file(
+        remote_path=remote_path,
+        local_path=local_path,
+        user=user,
+        identity_file=identity_file)
 
 @cli.command(name='copy-file')
 @click.argument('cluster-name')
@@ -961,6 +1024,7 @@ def config_to_click(config: dict) -> dict:
         'remove-slaves': ec2_configs,
         'run-command': ec2_configs,
         'copy-file': ec2_configs,
+        'download-file': ec2_configs
     }
 
     return click_map
